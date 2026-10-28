@@ -1,0 +1,51 @@
+name: Import Cloudflare assets
+
+on:
+  push:
+    paths:
+      - ".github/workflows/import-cloudflare-assets.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download videos and posters
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://baduanjin.ayatsukiimai.workers.dev"
+          mkdir -p videos posters
+
+          for n in $(seq -w 1 10); do
+            echo "Downloading video $n..."
+            curl --fail --location --retry 3 --retry-delay 2 \
+              "$base/videos/$n.mp4" -o "videos/$n.mp4"
+            test -s "videos/$n.mp4"
+
+            echo "Downloading poster $n..."
+            curl --fail --location --retry 3 --retry-delay 2 \
+              "$base/posters/$n.jpg" -o "posters/$n.jpg"
+            test -s "posters/$n.jpg"
+          done
+
+          echo "Downloaded files:"
+          ls -lh videos posters
+
+      - name: Commit imported assets and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          rm -f .github/workflows/import-cloudflare-assets.yml
+          git add videos posters .github/workflows/import-cloudflare-assets.yml
+          git commit -m "Import Baduanjin video assets from Cloudflare"
+          git push
